@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Тетріс Мобільний</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        h1 {
+            margin: 10px 0;
+        }
+
+        canvas {
+            background: #111;
+            border: 1px solid white;
+        }
+
+        /* Кнопки керування */
+        .controls {
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+        }
+
+        .btn {
+            width: 70px;
+            height: 70px;
+            background: #333;
+            color: white;
+            font-size: 28px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .btn:active {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Тетріс</h1>
+
+<canvas id="tetris"></canvas>
+
+<div class="controls">
+    <div class="btn" id="left">◀</div>
+    <div class="btn" id="rotate">⟳</div>
+    <div class="btn" id="right">▶</div>
+    <div class="btn" id="down">▼</div>
+</div>
+
+<script>
+    const canvas = document.getElementById("tetris");
+    const context = canvas.getContext("2d");
+
+    // Автоматичний розмір канвасу для мобільного
+    const blockSize = Math.floor(window.innerWidth / 15);
+    canvas.width = blockSize * 10;
+    canvas.height = blockSize * 20;
+
+    context.scale(blockSize, blockSize);
+
+    let board = Array.from({ length: 20 }, () => Array(10).fill(0));
+    let currentPiece;
+    let gameOver = false;
+
+    const pieces = [
+        [[1,1,1,1]],
+        [[1,1,1],[0,1,0]],
+        [[1,1,0],[0,1,1]],
+        [[0,1,1],[1,1,0]],
+        [[1,1],[1,1]],
+        [[1,1,1],[1,0,0]],
+        [[1,1,1],[0,0,1]]
+    ];
+
+    function drawBoard() {
+        board.forEach((row, r) => {
+            row.forEach((cell, c) => {
+                if (cell) {
+                    context.fillStyle = "white";
+                    context.fillRect(c, r, 1, 1);
+                }
+            });
+        });
+    }
+
+    function drawPiece() {
+        if (!currentPiece) return;
+        context.fillStyle = "cyan";
+        currentPiece.shape.forEach((row, r) => {
+            row.forEach((v, c) => {
+                if (v) context.fillRect(currentPiece.x + c, currentPiece.y + r, 1, 1);
+            });
+        });
+    }
+
+    function merge() {
+        currentPiece.shape.forEach((row, r) => {
+            row.forEach((value, c) => {
+                if (value) board[currentPiece.y + r][currentPiece.x + c] = 1;
+            });
+        });
+    }
+
+    function collide() {
+        return currentPiece.shape.some((row, r) =>
+            row.some((value, c) => {
+                if (!value) return false;
+                let x = currentPiece.x + c;
+                let y = currentPiece.y + r;
+                return x < 0 || x >= 10 || y >= 20 || (board[y] && board[y][x]);
+            })
+        );
+    }
+
+    function rotate() {
+        const shape = currentPiece.shape;
+        const rotated = shape[0].map((_, i) => shape.map(row => row[i]).reverse());
+        const old = currentPiece.shape;
+        currentPiece.shape = rotated;
+        if (collide()) currentPiece.shape = old;
+    }
+
+    function createPiece() {
+        const idx = Math.floor(Math.random() * pieces.length);
+        currentPiece = { shape: pieces[idx], x: 4, y: 0 };
+        if (collide()) gameOver = true;
+    }
+
+    function clearRows() {
+        board = board.filter(row => !row.every(v => v));
+        while (board.length < 20) board.unshift(Array(10).fill(0));
+    }
+
+    function drop() {
+        currentPiece.y++;
+        if (collide()) {
+            currentPiece.y--;
+            merge();
+            clearRows();
+            createPiece();
+        }
+    }
+
+    function update() {
+        if (gameOver) {
+            alert("Гру закінчено!");
+            return;
+        }
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        drawBoard();
+        drawPiece();
+        drop();
+    }
+
+    // Керування з клавіатури
+    document.addEventListener("keydown", e => {
+        if (e.key === "ArrowLeft") moveLeft();
+        if (e.key === "ArrowRight") moveRight();
+        if (e.key === "ArrowUp") rotate();
+        if (e.key === "ArrowDown") drop();
+    });
+
+    // Сенсорні кнопки
+    document.getElementById("left").onclick = moveLeft;
+    document.getElementById("right").onclick = moveRight;
+    document.getElementById("rotate").onclick = rotate;
+    document.getElementById("down").onclick = drop;
+
+    function moveLeft() {
+        currentPiece.x--;
+        if (collide()) currentPiece.x++;
+    }
+
+    function moveRight() {
+        currentPiece.x++;
+        if (collide()) currentPiece.x--;
+    }
+
+    createPiece();
+    setInterval(update, 700);
+</script>
+
+</body>
+</html>
